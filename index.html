@@ -1,30 +1,1043 @@
 
-<div class="brand-logo">
-  <img src="logo.jpg" alt="White Swan Technology — Original Logo">
-  <p class="brand-tagline">INNOVATE · PROTECT · EMPOWER</p>
-</div>
+$ErrorActionPreference = "Stop"
 
-<style>
-.brand-logo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+$Project = "white-swan-technology"
+
+if (!(Get-Command node -ErrorAction SilentlyContinue)) {
+  throw "Install Node.js LTS first: https://nodejs.org/"
 }
 
-.brand-logo img {
-  display: block;
-  width: 180px;
-  height: auto;
-  object-fit: contain;
+New-Item -ItemType Directory -Force -Path $Project | Out-Null
+Set-Location $Project
+
+$files = @{}
+
+$files["package.json"] = @'
+{
+  "name": "white-swan-technology",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0",
+    "jose": "^5.9.6",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "prisma": "^6.0.0",
+    "typescript": "^5.7.2"
+  }
+}
+'@
+
+$files["tsconfig.json"] = @'
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./*"] }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+'@
+
+$files["next.config.ts"] = @'
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  poweredByHeader: false
+};
+
+export default nextConfig;
+'@
+
+$files[".gitignore"] = @'
+node_modules/
+.next/
+.env
+.env.*
+!.env.example
+'@
+
+$files[".env.example"] = @'
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/white_swan?sslmode=require"
+ADMIN_EMAIL="admin@example.com"
+ADMIN_PASSWORD="replace-with-a-long-unique-password"
+AUTH_SECRET="replace-with-a-random-secret-at-least-32-characters-long"
+'@
+
+$files["prisma/schema.prisma"] = @'
+generator client {
+  provider = "prisma-client-js"
 }
 
-.brand-tagline {
-  margin: 0;
-  color: #D9BD78;
-  font-size: 10px;
-  letter-spacing: 2px;
-  font-weight: 600;
-  text-align: center;
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
-</style>
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ServiceType {
+  CONSULTATION
+  WEBSITE
+  APPLICATION
+  LOGO
+  OTHER
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  reference     String        @unique
+  name          String
+  email         String
+  phone         String?
+  language      String        @default("ar")
+  service       ServiceType
+  description   String        @db.Text
+  startAt       DateTime      @db.Timestamptz(3)
+  endAt         DateTime      @db.Timestamptz(3)
+  status        BookingStatus @default(PENDING)
+  proposedPrice Decimal?      @db.Decimal(12, 2)
+  currency      String        @default("DZD")
+  adminNote     String?       @db.Text
+  paymentStatus String        @default("NOT_CONFIGURED")
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(3)
+
+  @@index([startAt, endAt])
+  @@index([status, startAt])
+}
+'@
+
+$files["lib/db.ts"] = @'
+import { PrismaClient } from "@prisma/client";
+
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+};
+
+export const db =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === "development"
+      ? ["warn", "error"]
+      : ["error"]
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = db;
+}
+'@
+
+$files["lib/auth.ts"] = @'
+import { SignJWT, jwtVerify } from "jose";
+import { cookies } from "next/headers";
+
+const COOKIE = "white_swan_admin";
+
+function key() {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("AUTH_SECRET must be at least 32 characters.");
+  }
+  return new TextEncoder().encode(secret);
+}
+
+export async function createSession() {
+  const token = await new SignJWT({ role: "admin" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("8h")
+    .sign(key());
+
+  const store = await cookies();
+  store.set(COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: 28800
+  });
+}
+
+export async function clearSession() {
+  const store = await cookies();
+  store.delete(COOKIE);
+}
+
+export async function isAdmin() {
+  try {
+    const store = await cookies();
+    const token = store.get(COOKIE)?.value;
+    if (!token) return false;
+    const { payload } = await jwtVerify(token, key());
+    return payload.role === "admin";
+  } catch {
+    return false;
+  }
+}
+'@
+
+$files["app/layout.tsx"] = @'
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "White Swan Technology",
+  description: "INNOVATE · PROTECT · EMPOWER"
+};
+
+export default function RootLayout({
+  children
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="ar">
+      <body>{children}</body>
+    </html>
+  );
+}
+'@
+
+$files["app/api/admin/login/route.ts"] = @'
+import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
+import { createSession } from "@/lib/auth";
+
+export const runtime = "nodejs";
+
+function equal(a: string, b: string) {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const password = String(body.password ?? "");
+    const expectedEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+    const expectedPassword = process.env.ADMIN_PASSWORD;
+
+    if (!expectedEmail || !expectedPassword) {
+      return NextResponse.json(
+        { error: "Admin credentials are not configured." },
+        { status: 500 }
+      );
+    }
+
+    if (!equal(email, expectedEmail) || !equal(password, expectedPassword)) {
+      return NextResponse.json(
+        { error: "بيانات الدخول غير صحيحة." },
+        { status: 401 }
+      );
+    }
+
+    await createSession();
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json(
+      { error: "تعذّر تسجيل الدخول." },
+      { status: 400 }
+    );
+  }
+}
+'@
+
+$files["app/api/admin/logout/route.ts"] = @'
+import { NextResponse } from "next/server";
+import { clearSession } from "@/lib/auth";
+
+export async function POST() {
+  await clearSession();
+  return NextResponse.json({ ok: true });
+}
+'@
+
+$files["app/api/bookings/route.ts"] = @'
+import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
+import { z } from "zod";
+import { db } from "@/lib/db";
+
+export const runtime = "nodejs";
+
+const inputSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  email: z.string().trim().email().max(200),
+  phone: z.string().trim().max(40).optional().default(""),
+  language: z.enum(["ar", "fr", "en"]).default("ar"),
+  service: z.enum(["CONSULTATION", "WEBSITE", "APPLICATION", "LOGO", "OTHER"]),
+  description: z.string().trim().min(10).max(3000),
+  startAt: z.string().datetime()
+});
+
+export async function GET(request: NextRequest) {
+  const month = request.nextUrl.searchParams.get("month");
+
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+    return NextResponse.json({ error: "Invalid month." }, { status: 400 });
+  }
+
+  const [year, m] = month.split("-").map(Number);
+  if (m < 1 || m > 12) {
+    return NextResponse.json({ error: "Invalid month." }, { status: 400 });
+  }
+
+  const start = new Date(Date.UTC(year, m - 1, 1));
+  const end = new Date(Date.UTC(year, m, 1));
+
+  const rows = await db.booking.findMany({
+    where: {
+      status: "APPROVED",
+      startAt: { lt: end },
+      endAt: { gt: start }
+    },
+    select: { startAt: true, endAt: true }
+  });
+
+  return NextResponse.json({
+    busy: rows.map(row => ({
+      startAt: row.startAt.toISOString(),
+      endAt: row.endAt.toISOString()
+    }))
+  });
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const data = inputSchema.parse(await request.json());
+    const startAt = new Date(data.startAt);
+
+    if (startAt.getTime() <= Date.now()) {
+      return NextResponse.json(
+        { error: "اختاري موعدًا مستقبليًا." },
+        { status: 400 }
+      );
+    }
+
+    // مدة تجريبية: 30 دقيقة. تُضبط لاحقًا حسب نوع الخدمة.
+    const endAt = new Date(startAt.getTime() + 30 * 60_000);
+    const reference = "WS-" + randomUUID().slice(0, 8).toUpperCase();
+
+    const booking = await db.booking.create({
+      data: {
+        reference,
+        name: data.name,
+        email: data.email,
+        phone: data.phone || null,
+        language: data.language,
+        service: data.service,
+        description: data.description,
+        startAt,
+        endAt,
+        status: "PENDING",
+        currency: "DZD",
+        paymentStatus: "NOT_CONFIGURED"
+      },
+      select: { reference: true, status: true, startAt: true }
+    });
+
+    return NextResponse.json({
+      ok: true,
+      booking,
+      message: "طلبك وصل وينتظر موافقة الإدارة."
+    }, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "راجعي البيانات المدخلة." },
+        { status: 400 }
+      );
+    }
+
+    console.error("Booking creation failed:", error);
+    return NextResponse.json(
+      { error: "تعذّر حفظ الطلب. تحققي من الاتصال وحاولي مجددًا." },
+      { status: 500 }
+    );
+  }
+}
+'@
+
+$files["app/api/admin/bookings/route.ts"] = @'
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
+import { isAdmin } from "@/lib/auth";
+
+export const runtime = "nodejs";
+
+export async function GET() {
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "غير مصرح." }, { status: 401 });
+  }
+
+  const bookings = await db.booking.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 200
+  });
+
+  return NextResponse.json({ bookings });
+}
+
+const schema = z.object({
+  id: z.string().min(1),
+  action: z.enum(["APPROVE", "REJECT", "CANCEL", "PRICE"]),
+  price: z.number().finite().nonnegative().optional(),
+  currency: z.enum(["DZD", "EUR", "USD"]).optional(),
+  note: z.string().max(2000).optional()
+});
+
+export async function PATCH(request: NextRequest) {
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "غير مصرح." }, { status: 401 });
+  }
+
+  try {
+    const data = schema.parse(await request.json());
+    const current = await db.booking.findUnique({ where: { id: data.id } });
+
+    if (!current) {
+      return NextResponse.json({ error: "الطلب غير موجود." }, { status: 404 });
+    }
+
+    if (
+      data.action === "APPROVE" &&
+      data.price === undefined &&
+      current.proposedPrice === null
+    ) {
+      return NextResponse.json(
+        { error: "حددي السعر قبل اعتماد الموعد." },
+        { status: 400 }
+      );
+    }
+
+    const nextStatus =
+      data.action === "APPROVE" ? "APPROVED" :
+      data.action === "REJECT" ? "REJECTED" :
+      data.action === "CANCEL" ? "CANCELLED" : undefined;
+
+    const booking = await db.$transaction(async tx => {
+      if (data.action === "APPROVE") {
+        const collision = await tx.booking.findFirst({
+          where: {
+            id: { not: current.id },
+            status: "APPROVED",
+            startAt: { lt: current.endAt },
+            endAt: { gt: current.startAt }
+          }
+        });
+
+        if (collision) {
+          throw new Error("BOOKING_CONFLICT");
+        }
+      }
+
+      return tx.booking.update({
+        where: { id: data.id },
+        data: {
+          ...(nextStatus ? { status: nextStatus } : {}),
+          ...(data.price !== undefined ? { proposedPrice: data.price } : {}),
+          ...(data.currency ? { currency: data.currency } : {}),
+          ...(data.note !== undefined ? { adminNote: data.note } : {})
+        }
+      });
+    });
+
+    return NextResponse.json({ ok: true, booking });
+  } catch (error) {
+    if (error instanceof Error && error.message === "BOOKING_CONFLICT") {
+      return NextResponse.json(
+        { error: "هذا الموعد يتعارض مع موعد معتمد آخر." },
+        { status: 409 }
+      );
+    }
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "البيانات غير صالحة." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "تعارض في البيانات." },
+        { status: 409 }
+      );
+    }
+
+    console.error("Admin booking update failed:", error);
+    return NextResponse.json(
+      { error: "تعذّر تحديث الطلب." },
+      { status: 500 }
+    );
+  }
+}
+'@
+
+$files["app/page.tsx"] = @'
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type BusyPeriod = { startAt: string; endAt: string };
+
+const text = {
+  ar: {
+    home: "الرئيسية", services: "خدماتنا", book: "احجزي موعدًا",
+    eyebrow: "استوديو رقمي مستقل",
+    title: "نحوّل أفكارك إلى حضور رقمي استثنائي.",
+    description: "مواقع إلكترونية، تطبيقات، وهويات بصرية مصممة بعناية.",
+    booking: "اطلبي استشارة أو مشروعًا",
+    name: "الاسم الكامل", email: "البريد الإلكتروني",
+    phone: "الهاتف (اختياري)", service: "نوع الخدمة",
+    idea: "حدثينا عن فكرتك", send: "إرسال الطلب",
+    sending: "جارٍ الإرسال...", success: "تم استلام طلبك!",
+    error: "تعذّر إرسال الطلب.", prev: "السابق", next: "التالي",
+    consultation: "استشارة", website: "موقع إلكتروني",
+    application: "تطبيق", logo: "تصميم شعار", other: "خدمة أخرى",
+    pending: "لن يصبح الموعد مؤكدًا حتى موافقة الإدارة.",
+    days: ["إثن", "ثلا", "أرب", "خمي", "جمع", "سبت", "أحد"]
+  },
+  fr: {
+    home: "Accueil", services: "Services", book: "Réserver",
+    eyebrow: "Studio numérique indépendant",
+    title: "Transformons vos idées en une présence numérique remarquable.",
+    description: "Sites web, applications et identités visuelles soignées.",
+    booking: "Demander une consultation ou un projet",
+    name: "Nom complet", email: "Adresse e-mail",
+    phone: "Téléphone (facultatif)", service: "Type de service",
+    idea: "Parlez-nous de votre idée", send: "Envoyer la demande",
+    sending: "Envoi...", success: "Demande reçue !",
+    error: "Échec de l’envoi.", prev: "Précédent", next: "Suivant",
+    consultation: "Consultation", website: "Site web",
+    application: "Application", logo: "Logo", other: "Autre service",
+    pending: "Le rendez-vous attend la validation de l’administration.",
+    days: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+  },
+  en: {
+    home: "Home", services: "Services", book: "Book",
+    eyebrow: "Independent digital studio",
+    title: "Turning your ideas into an exceptional digital presence.",
+    description: "Websites, applications, and carefully crafted visual identities.",
+    booking: "Request a consultation or project",
+    name: "Full name", email: "Email address",
+    phone: "Phone (optional)", service: "Service type",
+    idea: "Tell us about your idea", send: "Submit request",
+    sending: "Submitting...", success: "Request received!",
+    error: "Could not submit.", prev: "Previous", next: "Next",
+    consultation: "Consultation", website: "Website",
+    application: "Application", logo: "Logo design", other: "Other service",
+    pending: "Your appointment awaits admin approval.",
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  }
+} as const;
+
+const services = [
+  ["CONSULTATION", "consultation"],
+  ["WEBSITE", "website"],
+  ["APPLICATION", "application"],
+  ["LOGO", "logo"],
+  ["OTHER", "other"]
+] as const;
+
+export default function HomePage() {
+  const [lang, setLang] = useState<"ar" | "fr" | "en">("ar");
+  const [month, setMonth] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  const [busy, setBusy] = useState<BusyPeriod[]>([]);
+  const [day, setDay] = useState("");
+  const [message, setMessage] = useState("");
+  const [reference, setReference] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const t = text[lang];
+  const rtl = lang === "ar";
+
+  useEffect(() => {
+    const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
+    fetch(`/api/bookings?month=${key}`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => setBusy(d.busy ?? []))
+      .catch(() => setBusy([]));
+  }, [month]);
+
+  const days = useMemo(() => {
+    const offset = (new Date(month.getFullYear(), month.getMonth(), 1).getDay() + 6) % 7;
+    const count = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+    return [
+      ...Array(offset).fill(null),
+      ...Array.from({ length: count }, (_, i) =>
+        new Date(month.getFullYear(), month.getMonth(), i + 1))
+    ];
+  }, [month]);
+
+  const monthName = new Intl.DateTimeFormat(
+    lang === "ar" ? "ar-DZ" : lang === "fr" ? "fr-FR" : "en-US",
+    { month: "long", year: "numeric" }
+  ).format(month);
+
+  function unavailable(d: Date) {
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const end = new Date(start.getTime() + 86400000);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return start < today || busy.some(b =>
+      new Date(b.startAt) < end && new Date(b.endAt) > start
+    );
+  }
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setMessage("");
+    setReference("");
+
+    if (!day) {
+      setMessage(t.error + " — " + (lang === "ar" ? "اختاري يومًا أولًا." : "Choose a day first."));
+      return;
+    }
+
+    const form = new FormData(e.currentTarget);
+    setSending(true);
+
+    try {
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.get("name"),
+          email: form.get("email"),
+          phone: form.get("phone"),
+          language: lang,
+          service: form.get("service"),
+          description: form.get("description"),
+          startAt: new Date(`${day}T10:00:00`).toISOString()
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || t.error);
+
+      setReference(result.booking.reference);
+      setMessage(t.success + " " + t.pending);
+      e.currentTarget.reset();
+      setDay("");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : t.error);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <main dir={rtl ? "rtl" : "ltr"} lang={lang}>
+      <header className="topbar">
+        <a className="brand" href="#" aria-label="White Swan Technology">
+          <img src="/logo.png" alt="White Swan Technology — INNOVATE · PROTECT · EMPOWER"
+            onError={e => { e.currentTarget.style.display = "none"; }} />
+          <span>WHITE SWAN</span>
+        </a>
+        <nav>
+          <a href="#home">{t.home}</a>
+          <a href="#services">{t.services}</a>
+          <a href="#booking">{t.book}</a>
+        </nav>
+        <select aria-label="Language" value={lang}
+          onChange={e => setLang(e.target.value as "ar" | "fr" | "en")}>
+          <option value="ar">العربية</option>
+          <option value="fr">Français</option>
+          <option value="en">English</option>
+        </select>
+      </header>
+
+      <section id="home" className="hero">
+        <div>
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h1>{t.title}</h1>
+          <p className="lead">{t.description}</p>
+          <a className="gold-button" href="#booking">{t.book} ↗</a>
+        </div>
+        <div className="hero-mark" aria-hidden="true"><span>W</span><i>✦</i></div>
+      </section>
+
+      <section id="services" className="section">
+        <p className="eyebrow">WHITE SWAN / 01</p>
+        <h2>{t.services}</h2>
+        <div className="service-grid">
+          {[t.website, t.application, t.logo, t.consultation].map((s, i) =>
+            <article className="service-card" key={s}>
+              <span className="service-number">0{i + 1}</span>
+              <h3>{s}</h3>
+              <p>INNOVATE · PROTECT · EMPOWER</p>
+            </article>
+          )}
+        </div>
+      </section>
+
+      <section id="booking" className="section booking-section">
+        <div>
+          <p className="eyebrow">WHITE SWAN / 02</p>
+          <h2>{t.booking}</h2>
+          <p className="muted">{t.pending}</p>
+
+          <div className="calendar">
+            <div className="calendar-head">
+              <button type="button" onClick={() => {
+                setDay("");
+                setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1));
+              }}>{t.prev}</button>
+              <strong>{monthName}</strong>
+              <button type="button" onClick={() => {
+                setDay("");
+                setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1));
+              }}>{t.next}</button>
+            </div>
+            <div className="calendar-grid">
+              {t.days.map(d => <span className="weekday" key={d}>{d}</span>)}
+              {days.map((d, i) => {
+                if (!d) return <span key={`empty-${i}`} />;
+                const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                return <button key={value} type="button"
+                  disabled={unavailable(d)}
+                  className={day === value ? "day selected" : "day"}
+                  onClick={() => setDay(value)}>{d.getDate()}</button>;
+              })}
+            </div>
+            <p className="muted small">{day || (lang === "ar" ? "اختاري يومًا" : lang === "fr" ? "Choisissez un jour" : "Choose a day")}</p>
+          </div>
+        </div>
+
+        <form className="booking-form" onSubmit={submit}>
+          <label>{t.name}<input name="name" required minLength={2} maxLength={100} /></label>
+          <label>{t.email}<input name="email" type="email" required maxLength={200} /></label>
+          <label>{t.phone}<input name="phone" type="tel" maxLength={40} /></label>
+          <label>{t.service}
+            <select name="service" defaultValue="CONSULTATION">
+              {services.map(([value, key]) =>
+                <option key={value} value={value}>{t[key]}</option>
+              )}
+            </select>
+          </label>
+          <label>{t.idea}<textarea name="description" rows={4} required minLength={10} maxLength={3000} /></label>
+          <button className="gold-button submit-button" disabled={sending}>
+            {sending ? t.sending : t.send}
+          </button>
+          {message && <p className="form-message" role="status">{message}</p>}
+          {reference && <p className="reference">Reference: <strong>{reference}</strong></p>}
+        </form>
+      </section>
+
+      <footer>
+        <span>WHITE SWAN TECHNOLOGY</span>
+        <span>INNOVATE · PROTECT · EMPOWER</span>
+      </footer>
+    </main>
+  );
+}
+'@
+
+$files["app/admin/page.tsx"] = @'
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Booking = {
+  id: string;
+  reference: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  service: string;
+  description: string;
+  startAt: string;
+  endAt: string;
+  status: string;
+  proposedPrice: string | number | null;
+  currency: string;
+  adminNote: string | null;
+};
+
+export default function AdminPage() {
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [error, setError] = useState("");
+
+  async function load() {
+    const r = await fetch("/api/admin/bookings", { cache: "no-store" });
+    if (!r.ok) { setLoggedIn(false); return; }
+    const d = await r.json();
+    setBookings(d.bookings);
+    setLoggedIn(true);
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  async function login(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+
+    const r = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+
+    const d = await r.json();
+    if (!r.ok) { setError(d.error || "Login failed"); return; }
+
+    setPassword("");
+    await load();
+  }
+
+  async function update(b: Booking, action: string) {
+    setError("");
+    let price: number | undefined;
+    let currency: "DZD" | "EUR" | "USD" = "DZD";
+
+    if (action === "PRICE" || action === "APPROVE") {
+      const p = window.prompt("Enter price:");
+      if (p === null) return;
+      price = Number(p);
+      if (!Number.isFinite(price) || price < 0) {
+        setError("Invalid price.");
+        return;
+      }
+
+      const c = window.prompt("Currency: DZD, EUR, USD", "DZD");
+      if (c === null) return;
+      if (!["DZD", "EUR", "USD"].includes(c)) {
+        setError("Invalid currency.");
+        return;
+      }
+      currency = c as typeof currency;
+    }
+
+    const note = action === "REJECT"
+      ? window.prompt("Optional reason:") ?? ""
+      : undefined;
+
+    const r = await fetch("/api/admin/bookings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: b.id, action, price, currency,
+        ...(note !== undefined ? { note } : {})
+      })
+    });
+
+    const d = await r.json();
+    if (!r.ok) { setError(d.error || "Update failed"); return; }
+    await load();
+  }
+
+  async function logout() {
+    await fetch("/api/admin/logout", { method: "POST" });
+    setLoggedIn(false);
+    setBookings([]);
+  }
+
+  if (!loggedIn) {
+    return <main className="admin-login" dir="rtl">
+      <form className="booking-form admin-form" onSubmit={login}>
+        <p className="eyebrow">WHITE SWAN / ADMIN</p>
+        <h1>لوحة الإدارة</h1>
+        <label>البريد الإلكتروني
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+        </label>
+        <label>كلمة المرور
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+        </label>
+        <button className="gold-button">دخول</button>
+        {error && <p role="alert" className="form-message">{error}</p>}
+      </form>
+    </main>;
+  }
+
+  return <main className="admin-page" dir="rtl">
+    <header className="admin-header">
+      <div><p className="eyebrow">WHITE SWAN / CONTROL ROOM</p><h1>إدارة طلبات العملاء</h1></div>
+      <button className="outline-button" onClick={logout}>تسجيل الخروج</button>
+    </header>
+    {error && <p role="alert" className="form-message">{error}</p>}
+    {!bookings.length && <p>لا توجد طلبات حتى الآن.</p>}
+    {bookings.map(b => <article className="admin-card" key={b.id}>
+      <div className="admin-card-head">
+        <strong>{b.reference}</strong><span className="status">{b.status}</span>
+      </div>
+      <h2>{b.name}</h2>
+      <p>{b.email} {b.phone || ""}</p>
+      <p>الخدمة: {b.service}</p>
+      <p>الموعد: {new Date(b.startAt).toLocaleString()}</p>
+      <p>{b.description}</p>
+      <p>السعر: {b.proposedPrice ?? "لم يحدد"} {b.currency}</p>
+      {b.adminNote && <p>ملاحظة: {b.adminNote}</p>}
+      <div className="admin-actions">
+        <button onClick={() => update(b, "PRICE")}>تحديد السعر</button>
+        <button onClick={() => update(b, "APPROVE")}>اعتماد السعر والموعد</button>
+        <button onClick={() => update(b, "REJECT")}>رفض الطلب</button>
+        {b.status === "APPROVED" && <button onClick={() => update(b, "CANCEL")}>إلغاء الموعد</button>}
+      </div>
+    </article>)}
+  </main>;
+}
+'@
+
+$files["app/globals.css"] = @'
+:root {
+  --navy: #08152d;
+  --navy-light: #102344;
+  --gold: #d8b66a;
+  --gold-light: #f0dca6;
+  --cream: #f7f4ed;
+  --white: #fffdf8;
+  --muted: #a9b2c3;
+  --line: rgba(216,182,106,.24);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--navy); color: var(--cream); font-family: Arial,sans-serif; }
+a { color: inherit; text-decoration: none; }
+button,input,select,textarea { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .4; }
+.topbar { min-height: 90px; padding: 16px 6%; display:flex; align-items:center; justify-content:space-between; gap:24px; border-bottom:1px solid var(--line); }
+.brand { display:flex; align-items:center; gap:10px; color:var(--gold); font-size:12px; letter-spacing:2px; }
+.brand img { width:160px; max-height:68px; object-fit:contain; }
+.topbar nav { display:flex; gap:28px; font-size:13px; }
+.topbar nav a:hover { color:var(--gold); }
+.topbar select { background:var(--navy-light); color:var(--cream); border:1px solid var(--line); padding:10px; border-radius:4px; }
+.hero { min-height:570px; padding:90px 9%; display:grid; grid-template-columns:1.2fr .8fr; align-items:center; gap:40px; background:radial-gradient(ellipse at 80% 40%,rgba(216,182,106,.12),transparent 40%),linear-gradient(135deg,var(--navy),#0b1b36); }
+.hero h1 { font-size:clamp(38px,5vw,65px); line-height:1.2; margin:24px 0; }
+.eyebrow { color:var(--gold); font-size:11px; letter-spacing:3px; }
+.lead { color:#bac4d5; max-width:540px; line-height:1.9; }
+.gold-button { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--gold); background:var(--gold); color:var(--navy); padding:14px 23px; font-weight:700; border-radius:3px; transition:background .2s,transform .2s; }
+.gold-button:hover { background:var(--gold-light); transform:translateY(-2px); }
+.hero-mark { width:min(330px,80%); aspect-ratio:1; margin:auto; display:grid; place-items:center; position:relative; border:1px solid var(--line); border-radius:50%; color:rgba(216,182,106,.78); font-size:180px; font-weight:800; }
+.hero-mark:before,.hero-mark:after { content:""; position:absolute; border:1px solid var(--line); border-radius:50%; inset:18px; }
+.hero-mark:after { inset:-18px; opacity:.45; }
+.hero-mark i { position:absolute; right:18%; top:20%; font-size:32px; }
+.section { padding:85px 9%; }
+.section h2 { font-size:clamp(28px,4vw,43px); margin:12px 0 35px; }
+.service-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.service-card { min-height:190px; padding:25px; background:var(--navy-light); border:1px solid var(--line); transition:transform .2s,border-color .2s; }
+.service-card:hover { transform:translateY(-5px); border-color:var(--gold); }
+.service-number { color:var(--gold); font-size:12px; }
+.service-card h3 { margin-top:32px; font-size:20px; }
+.service-card p { color:var(--muted); font-size:9px; letter-spacing:1.4px; }
+.booking-section { background:var(--cream); color:var(--navy); display:grid; grid-template-columns:1fr 1fr; gap:55px; }
+.booking-section .eyebrow { color:#98752f; }
+.muted { color:#697386; line-height:1.7; }
+.small { font-size:12px; }
+.calendar { border:1px solid #dfd8c9; padding:20px; margin-top:28px; background:var(--white); border-radius:5px; }
+.calendar-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:22px; }
+.calendar-head button,.outline-button { border:1px solid #c5b991; background:transparent; color:var(--navy); padding:9px 12px; border-radius:3px; }
+.calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
+.weekday { text-align:center; color:#7c8490; font-size:11px; padding:7px 0; }
+.day { min-height:40px; border:1px solid transparent; background:#f3efe5; color:var(--navy); border-radius:3px; }
+.day:hover:not(:disabled),.day.selected { border-color:#9a772e; background:var(--navy); color:var(--gold-light); }
+.day:disabled { background:#e8e5de; color:#a7a7a7; text-decoration:line-through; }
+.booking-form { display:flex; flex-direction:column; gap:16px; }
+.booking-form label { display:flex; flex-direction:column; gap:8px; font-size:13px; font-weight:600; }
+.booking-form input,.booking-form select,.booking-form textarea { width:100%; padding:12px; border:1px solid #d9d2c4; border-radius:3px; background:var(--white); color:var(--navy); outline:none; }
+.booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus { border-color:#a7833c; }
+.booking-form textarea { resize:vertical; }
+.submit-button { width:100%; }
+.form-message { padding:12px; border:1px solid #c8b47b; background:#fff9e8; color:#443513; overflow-wrap:anywhere; }
+.reference { overflow-wrap:anywhere; }
+footer { padding:28px 6%; display:flex; justify-content:space-between; flex-wrap:wrap; gap:15px; color:var(--gold); font-size:10px; letter-spacing:1.4px; }
+.admin-login { min-height:100vh; padding:30px; display:grid; place-items:center; }
+.admin-form { width:min(100%,420px); padding:32px; background:var(--cream); color:var(--navy); }
+.admin-page { min-height:100vh; padding:40px 7%; }
+.admin-header,.admin-card-head { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.admin-card { margin:20px 0; padding:24px; border:1px solid var(--line); background:var(--navy-light); overflow-wrap:anywhere; }
+.admin-card p { color:#d4dae4; line-height:1.6; }
+.status { border:1px solid var(--line); padding:6px 10px; font-size:11px; color:var(--gold-light); }
+.admin-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:20px; }
+.admin-actions button { padding:10px 13px; background:transparent; color:var(--gold-light); border:1px solid var(--line); }
+.admin-actions button:hover { background:var(--gold); color:var(--navy); }
+@media(max-width:850px) {
+  .hero { grid-template-columns:1fr; padding:65px 7%; }
+  .hero-mark { width:190px; font-size:110px; }
+  .service-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .booking-section { grid-template-columns:1fr; padding:60px 6%; }
+  .topbar { flex-wrap:wrap; }
+  .topbar nav { order:3; width:100%; justify-content:space-between; gap:10px; }
+}
+@media(max-width:480px) {
+  .service-grid { grid-template-columns:1fr; }
+  .hero h1 { font-size:36px; }
+  .section { padding:55px 6%; }
+  .calendar { padding:10px; }
+  .day { min-height:34px; }
+  .admin-page { padding:24px 5%; }
+}
+'@
+
+foreach ($entry in $files.GetEnumerator()) {
+  $path = $entry.Key
+  $folder = Split-Path $path -Parent
+
+  if ($folder -and !(Test-Path $folder)) {
+    New-Item -ItemType Directory -Force -Path $folder | Out-Null
+  }
+
+  Set-Content -Path $path -Value $entry.Value -Encoding utf8
+}
+
+# Create the environment file only if it does not already exist.
+if (!(Test-Path ".env")) {
+  Copy-Item ".env.example" ".env"
+}
+
+Write-Host ""
+Write-Host "White Swan Technology files created." -ForegroundColor Green
+Write-Host "Next: edit .env with your PostgreSQL connection and admin credentials."
+Write-Host "Then run: npm install"
+Write-Host "Then run: npx prisma generate"
+Write-Host "Then run: npx prisma migrate dev --name init"
+Write-Host "Finally run: npm run dev"
+Write-Host ""
+Write-Host "Open http://localhost:3000 and http://localhost:3000/admin"
