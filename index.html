@@ -1,0 +1,431 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>White Swan Technology</title>
+<style>
+:root {
+  --cream: #faf6ee;
+  --gold: #b99a62;
+  --dark: #28271f;
+  --muted: #777267;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--dark);
+  font-family: Arial, sans-serif;
+  line-height: 1.8;
+}
+header {
+  padding: 18px 7%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e6ddcd;
+  background: rgba(250,246,238,.97);
+}
+.logo { color: var(--gold); font-size: 21px; font-weight: bold; }
+.logo small { display: block; font-size: 10px; letter-spacing: 4px; }
+nav { display: flex; gap: 20px; flex-wrap: wrap; }
+a { color: inherit; text-decoration: none; }
+nav a:hover { color: var(--gold); }
+select, input, textarea {
+  padding: 12px;
+  border: 1px solid #ded4c2;
+  background: #fffdf8;
+  width: 100%;
+  font: inherit;
+}
+#language { width: auto; }
+.hero {
+  min-height: 560px;
+  padding: 85px 8%;
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  align-items: center;
+  gap: 45px;
+}
+.eyebrow { color: var(--gold); letter-spacing: 2px; font-size: 13px; }
+h1 { font-size: clamp(38px, 5vw, 65px); line-height: 1.25; margin: 18px 0; }
+h1 em, h2 em { color: var(--gold); font-family: Georgia, serif; }
+p { color: var(--muted); }
+.button {
+  display: inline-block;
+  padding: 12px 22px;
+  background: var(--dark);
+  color: white;
+  border: none;
+  cursor: pointer;
+  margin-top: 12px;
+}
+.button.gold { background: var(--gold); }
+.art {
+  min-height: 350px;
+  background: #eee5d4;
+  border: 1px solid #d9c7a5;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 30px;
+  position: relative;
+}
+.art:before {
+  content: "WS";
+  font-family: Georgia, serif;
+  font-size: 110px;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  width: 230px;
+  height: 230px;
+  display: grid;
+  place-items: center;
+}
+.art span {
+  position: absolute;
+  bottom: 20px;
+  font-size: 12px;
+  letter-spacing: 4px;
+}
+.strip {
+  padding: 22px;
+  text-align: center;
+  background: #eee9de;
+  color: #72664f;
+  letter-spacing: 2px;
+}
+section.content { padding: 80px 8%; }
+.heading { max-width: 600px; margin-bottom: 35px; }
+h2 { font-size: clamp(30px, 4vw, 45px); line-height: 1.3; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.card {
+  padding: 27px;
+  border: 1px solid #e4dac9;
+  background: #fffdf8;
+  display: flex;
+  flex-direction: column;
+}
+.card .number { color: var(--gold); }
+.card h3 { margin-bottom: 0; }
+.price { color: var(--gold); font-weight: bold; margin-top: auto; }
+.process { background: #eee9de; }
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 25px;
+}
+.step { border-top: 1px solid var(--gold); padding-top: 18px; }
+.step strong { color: var(--gold); }
+.order-layout {
+  display: grid;
+  grid-template-columns: .8fr 1.2fr;
+  gap: 45px;
+}
+form {
+  background: #fffdf8;
+  border: 1px solid #e4dac9;
+  padding: 28px;
+}
+label { display: block; margin: 15px 0 6px; font-size: 14px; }
+textarea { resize: vertical; }
+#result {
+  display: none;
+  padding: 18px;
+  background: #eee9de;
+  margin-top: 20px;
+  overflow-wrap: anywhere;
+}
+details { border-bottom: 1px solid #ded4c2; padding: 18px 0; }
+summary { cursor: pointer; font-weight: bold; }
+footer {
+  background: var(--dark);
+  color: white;
+  text-align: center;
+  padding: 35px 15px;
+}
+footer p { color: #d4c9b5; }
+@media(max-width: 800px) {
+  .hero, .order-layout { grid-template-columns: 1fr; }
+  .hero { padding-top: 50px; }
+  .cards { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr 1fr; }
+  nav { gap: 12px; }
+}
+@media(max-width: 450px) {
+  header { justify-content: center; }
+  .steps { grid-template-columns: 1fr; }
+  form { padding: 18px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#home">WHITE SWAN<small>TECHNOLOGY</small></a>
+  <nav>
+    <a href="#services" data-t="nav1">الخدمات</a>
+    <a href="#process" data-t="nav2">مراحل العمل</a>
+    <a href="#order" data-t="nav3">اطلبي مشروعك</a>
+    <a href="#faq" data-t="nav4">الأسئلة</a>
+  </nav>
+  <select id="language" aria-label="Language">
+    <option value="ar">العربية</option>
+    <option value="fr">Français</option>
+    <option value="en">English</option>
+  </select>
+</header>
+
+<main>
+<section class="hero" id="home">
+  <div>
+    <span class="eyebrow" data-t="eyebrow">استوديو رقمي مستقل</span>
+    <h1 data-t="heroTitle">فكرتك تستحق<br><em>حضورًا رقميًا</em> مميزًا.</h1>
+    <p data-t="heroText">نصمم مواقع إلكترونية وتطبيقات وهويات بصرية تساعد مشروعك على الظهور بثقة وأناقة.</p>
+    <a href="#order" class="button gold" data-t="heroButton">ابدئي مشروعك ↗</a>
+    <a href="#services" class="button" data-t="heroExplore">اكتشفي خدماتنا</a>
+  </div>
+  <div class="art"><span>CREATIVITY • TECHNOLOGY • TRUST</span></div>
+</section>
+
+<div class="strip" data-t="strip">تصميم مدروس ✦ تواصل واضح ✦ حلول رقمية ✦ اهتمام بالتفاصيل</div>
+
+<section class="content" id="services">
+  <div class="heading">
+    <span class="eyebrow" data-t="serviceEyebrow">خدماتنا</span>
+    <h2 data-t="serviceTitle">حلول رقمية، <em>مصممة حولك.</em></h2>
+    <p data-t="serviceIntro">اختاري الخدمة التي تناسب فكرتك، وسنراجع احتياجاتك قبل تأكيد السعر.</p>
+  </div>
+  <div class="cards">
+    <article class="card">
+      <span class="number">01 / WEB</span>
+      <h3 data-t="webTitle">المواقع الإلكترونية</h3>
+      <p data-t="webText">مواقع للشركات، صفحات تعريفية، مواقع خدمات وصفحات هبوط متجاوبة.</p>
+      <div class="price" data-t="webPrice">ابتداءً من €120 — سعر إرشادي</div>
+      <button class="button choose" data-service="website" data-t="choose">اختاري الخدمة ↗</button>
+    </article>
+    <article class="card">
+      <span class="number">02 / APP</span>
+      <h3 data-t="appTitle">التطبيقات والأنظمة</h3>
+      <p data-t="appText">تصميم واجهات التطبيقات، لوحات المتابعة وأنظمة الطلبات حسب نطاق المشروع.</p>
+      <div class="price" data-t="appPrice">ابتداءً من €350 — سعر إرشادي</div>
+      <button class="button choose" data-service="app" data-t="choose">اختاري الخدمة ↗</button>
+    </article>
+    <article class="card">
+      <span class="number">03 / BRAND</span>
+      <h3 data-t="logoTitle">الشعارات والهوية البصرية</h3>
+      <p data-t="logoText">شعار أنيق وهوية بصرية متناسقة تعكس شخصية علامتك التجارية.</p>
+      <div class="price" data-t="logoPrice">ابتداءً من €60 — سعر إرشادي</div>
+      <button class="button choose" data-service="logo" data-t="choose">اختاري الخدمة ↗</button>
+    </article>
+  </div>
+  <p data-t="disclaimer">الأسعار إرشادية فقط، ويُحدد السعر النهائي بعد مراجعة تفاصيل المشروع والاتفاق كتابيًا.</p>
+</section>
+
+<section class="content process" id="process">
+  <div class="heading">
+    <span class="eyebrow" data-t="processEyebrow">طريقة العمل</span>
+    <h2 data-t="processTitle">من الفكرة إلى <em>الإطلاق.</em></h2>
+  </div>
+  <div class="steps">
+    <div class="step"><strong>01</strong><h3 data-t="step1">إرسال الطلب</h3><p data-t="step1p">تشرحين فكرتك والخدمات المطلوبة.</p></div>
+    <div class="step"><strong>02</strong><h3 data-t="step2">مراجعة السعر</h3><p data-t="step2p">نراجع التفاصيل ونقترح عرض سعر.</p></div>
+    <div class="step"><strong>03</strong><h3 data-t="step3">التنفيذ</h3><p data-t="step3p">يبدأ العمل بعد الاتفاق على الشروط.</p></div>
+    <div class="step"><strong>04</strong><h3 data-t="step4">التسليم</h3><p data-t="step4p">تستلمين المشروع وفق الاتفاق المكتوب.</p></div>
+  </div>
+</section>
+
+<section class="content" id="order">
+  <div class="order-layout">
+    <div>
+      <span class="eyebrow" data-t="orderEyebrow">لنتحدث عن فكرتك</span>
+      <h2 data-t="orderTitle">مشروعك القادم يبدأ <em>هنا.</em></h2>
+      <p data-t="orderText">املئي النموذج لإنشاء ملخص طلب يمكنك تنزيله أو إرساله يدويًا بالبريد الإلكتروني.</p>
+      <p><strong>WHITE SWAN TECHNOLOGY</strong><br><span data-t="tagline">حلول رقمية تُبنى بعناية.</span></p>
+    </div>
+    <form id="orderForm">
+      <h3 data-t="formTitle">نموذج طلب مشروع</h3>
+      <label for="name" data-t="nameLabel">الاسم أو اسم الشركة</label>
+      <input id="name" name="name" required maxlength="100">
+      <label for="email" data-t="emailLabel">البريد الإلكتروني</label>
+      <input id="email" name="email" type="email" required maxlength="160">
+      <label for="service" data-t="serviceLabel">الخدمة المطلوبة</label>
+      <select id="service" name="service" required>
+        <option value="" data-t="servicePlaceholder">اختاري خدمة</option>
+        <option value="website" data-t="webTitle">المواقع الإلكترونية</option>
+        <option value="app" data-t="appTitle">التطبيقات والأنظمة</option>
+        <option value="logo" data-t="logoTitle">الشعارات والهوية البصرية</option>
+        <option value="other" data-t="other">خدمة أخرى</option>
+      </select>
+      <label for="budget" data-t="budgetLabel">الميزانية التقريبية</label>
+      <select id="budget" name="budget">
+        <option value="" data-t="flexible">مرنة / أحتاج اقتراحًا</option>
+        <option>Under €100</option>
+        <option>€100–€300</option>
+        <option>€300–€700</option>
+        <option>€700+</option>
+        <option data-t="dzdBudget">ميزانية بالدينار الجزائري</option>
+      </select>
+      <label for="deadline" data-t="deadlineLabel">موعد التسليم المرغوب</label>
+      <input id="deadline" name="deadline" type="date">
+      <label for="details" data-t="detailsLabel">تفاصيل المشروع</label>
+      <textarea id="details" name="details" rows="5" minlength="10" maxlength="3000" required></textarea>
+      <label for="payment" data-t="paymentLabel">طريقة الدفع المفضلة</label>
+      <select id="payment" name="payment">
+        <option value="bank" data-t="paymentBank">تحويل بنكي أو وسيلة قانونية متاحة</option>
+        <option value="discuss" data-t="paymentDiscuss">مناقشة الخيارات</option>
+      </select>
+      <label><input type="checkbox" required style="width:auto"> <span data-t="consent">أوافق على استخدام معلوماتي للتواصل بشأن الطلب.</span></label>
+      <button class="button gold" type="submit" data-t="submit">إنشاء ملخص الطلب</button>
+      <div id="result" aria-live="polite"></div>
+    </form>
+  </div>
+</section>
+
+<section class="content" id="faq">
+  <span class="eyebrow" data-t="faqEyebrow">أسئلة شائعة</span>
+  <h2 data-t="faqTitle">قبل أن نبدأ.</h2>
+  <details><summary data-t="faq1q">هل السعر نهائي عند إرسال الطلب؟</summary><p data-t="faq1a">لا، السعر إرشادي. يتم تحديد السعر والمدة بعد مراجعة المتطلبات والاتفاق كتابيًا.</p></details>
+  <details><summary data-t="faq2q">هل يمكن إنشاء موقع بثلاث لغات؟</summary><p data-t="faq2a">نعم، يمكن تحديد اللغات المطلوبة في وصف المشروع، وقد يؤثر المحتوى والترجمة في التكلفة.</p></details>
+  <details><summary data-t="faq3q">هل الدفع الإلكتروني مفعّل؟</summary><p data-t="faq3a">لا. تحتاج المدفوعات الإلكترونية إلى مزود دفع وإعداد آمن ومتوافق مع القوانين.</p></details>
+  <details><summary data-t="faq4q">هل يتم حفظ الطلب تلقائيًا؟</summary><p data-t="faq4a">لا، هذه النسخة تنشئ ملخصًا محليًا فقط. يلزم خادم وقاعدة بيانات لتخزين الطلبات وإدارتها.</p></details>
+</section>
+</main>
+
+<footer>
+  <div class="logo">WHITE SWAN<small>TECHNOLOGY</small></div>
+  <p data-t="footer">حلول رقمية تُبنى بعناية.</p>
+  <small>© <span id="year"></span> White Swan Technology</small>
+</footer>
+
+<script>
+const translations = {
+ar: {
+nav1:"الخدمات",nav2:"مراحل العمل",nav3:"اطلبي مشروعك",nav4:"الأسئلة",
+eyebrow:"استوديو رقمي مستقل",heroTitle:"فكرتك تستحق<br><em>حضورًا رقميًا</em> مميزًا.",
+heroText:"نصمم مواقع إلكترونية وتطبيقات وهويات بصرية تساعد مشروعك على الظهور بثقة وأناقة.",
+heroButton:"ابدئي مشروعك ↗",heroExplore:"اكتشفي خدماتنا",strip:"تصميم مدروس ✦ تواصل واضح ✦ حلول رقمية ✦ اهتمام بالتفاصيل",
+serviceEyebrow:"خدماتنا",serviceTitle:"حلول رقمية، <em>مصممة حولك.</em>",serviceIntro:"اختاري الخدمة التي تناسب فكرتك، وسنراجع احتياجاتك قبل تأكيد السعر.",
+webTitle:"المواقع الإلكترونية",webText:"مواقع للشركات، صفحات تعريفية، مواقع خدمات وصفحات هبوط متجاوبة.",webPrice:"ابتداءً من €120 — سعر إرشادي",
+appTitle:"التطبيقات والأنظمة",appText:"تصميم واجهات التطبيقات، لوحات المتابعة وأنظمة الطلبات حسب نطاق المشروع.",appPrice:"ابتداءً من €350 — سعر إرشادي",
+logoTitle:"الشعارات والهوية البصرية",logoText:"شعار أنيق وهوية بصرية متناسقة تعكس شخصية علامتك التجارية.",logoPrice:"ابتداءً من €60 — سعر إرشادي",
+choose:"اختاري الخدمة ↗",disclaimer:"الأسعار إرشادية فقط، ويُحدد السعر النهائي بعد مراجعة تفاصيل المشروع والاتفاق كتابيًا.",
+processEyebrow:"طريقة العمل",processTitle:"من الفكرة إلى <em>الإطلاق.</em>",step1:"إرسال الطلب",step1p:"تشرحين فكرتك والخدمات المطلوبة.",step2:"مراجعة السعر",step2p:"نراجع التفاصيل ونقترح عرض سعر.",step3:"التنفيذ",step3p:"يبدأ العمل بعد الاتفاق على الشروط.",step4:"التسليم",step4p:"تستلمين المشروع وفق الاتفاق المكتوب.",
+orderEyebrow:"لنتحدث عن فكرتك",orderTitle:"مشروعك القادم يبدأ <em>هنا.</em>",orderText:"املئي النموذج لإنشاء ملخص طلب يمكنك تنزيله أو إرساله يدويًا بالبريد الإلكتروني.",tagline:"حلول رقمية تُبنى بعناية.",formTitle:"نموذج طلب مشروع",nameLabel:"الاسم أو اسم الشركة",emailLabel:"البريد الإلكتروني",serviceLabel:"الخدمة المطلوبة",servicePlaceholder:"اختاري خدمة",other:"خدمة أخرى",budgetLabel:"الميزانية التقريبية",flexible:"مرنة / أحتاج اقتراحًا",dzdBudget:"ميزانية بالدينار الجزائري",deadlineLabel:"موعد التسليم المرغوب",detailsLabel:"تفاصيل المشروع",paymentLabel:"طريقة الدفع المفضلة",paymentBank:"تحويل بنكي أو وسيلة قانونية متاحة",paymentDiscuss:"مناقشة الخيارات",consent:"أوافق على استخدام معلوماتي للتواصل بشأن الطلب.",submit:"إنشاء ملخص الطلب",
+faqEyebrow:"أسئلة شائعة",faqTitle:"قبل أن نبدأ.",faq1q:"هل السعر نهائي عند إرسال الطلب؟",faq1a:"لا، السعر إرشادي. يتم تحديد السعر والمدة بعد مراجعة المتطلبات والاتفاق كتابيًا.",faq2q:"هل يمكن إنشاء موقع بثلاث لغات؟",faq2a:"نعم، يمكن تحديد اللغات المطلوبة في وصف المشروع، وقد يؤثر المحتوى والترجمة في التكلفة.",faq3q:"هل الدفع الإلكتروني مفعّل؟",faq3a:"لا. تحتاج المدفوعات الإلكترونية إلى مزود دفع وإعداد آمن ومتوافق مع القوانين.",faq4q:"هل يتم حفظ الطلب تلقائيًا؟",faq4a:"لا، هذه النسخة تنشئ ملخصًا محليًا فقط. يلزم خادم وقاعدة بيانات لتخزين الطلبات وإدارتها.",footer:"حلول رقمية تُبنى بعناية.",success:"تم إنشاء ملخص طلبك. يمكنك تنزيله أو فتح بريد لإرساله يدويًا.",download:"تنزيل الملخص",send:"إرسال عبر البريد",subject:"طلب مشروع جديد — White Swan Technology",serviceNames:{website:"موقع إلكتروني",app:"تطبيق أو نظام",logo:"شعار وهوية بصرية",other:"خدمة أخرى"},paymentNames:{bank:"تحويل بنكي أو وسيلة قانونية متاحة",discuss:"مناقشة الخيارات"}
+},
+fr: {
+nav1:"Services",nav2:"Étapes",nav3:"Votre projet",nav4:"FAQ",eyebrow:"Studio digital indépendant",
+heroTitle:"Votre idée mérite<br><em>une présence digitale</em> remarquable.",heroText:"Nous créons des sites web, des applications et des identités visuelles élégantes pour votre activité.",
+heroButton:"Démarrer un projet ↗",heroExplore:"Découvrir nos services",strip:"Design réfléchi ✦ Communication claire ✦ Solutions digitales ✦ Sens du détail",
+serviceEyebrow:"Nos services",serviceTitle:"Des solutions digitales, <em>pensées pour vous.</em>",serviceIntro:"Choisissez le service adapté à votre idée. Nous étudierons vos besoins avant de confirmer le prix.",
+webTitle:"Sites web",webText:"Sites vitrines, sites d'entreprise, pages de services et pages d'atterrissage adaptatives.",webPrice:"À partir de 120 € — indicatif",
+appTitle:"Applications et systèmes",appText:"Interfaces d'applications, tableaux de bord et systèmes de demandes selon le périmètre.",appPrice:"À partir de 350 € — indicatif",
+logoTitle:"Logo et identité visuelle",logoText:"Un logo élégant et une identité cohérente pour votre marque.",logoPrice:"À partir de 60 € — indicatif",
+choose:"Choisir ce service ↗",disclaimer:"Prix indicatifs. Le prix final sera défini après examen et accord écrit.",
+processEyebrow:"Notre méthode",processTitle:"De l'idée au <em>lancement.</em>",step1:"Envoyer la demande",step1p:"Décrivez votre idée et vos besoins.",step2:"Étude et devis",step2p:"Nous examinons les détails et proposons un devis.",step3:"Réalisation",step3p:"Le travail commence après accord.",step4:"Livraison",step4p:"Le projet est livré selon l'accord écrit.",
+orderEyebrow:"Parlons de votre idée",orderTitle:"Votre prochain projet commence <em>ici.</em>",orderText:"Remplissez le formulaire pour créer un récapitulatif à télécharger ou envoyer manuellement.",tagline:"Des solutions digitales conçues avec soin.",formTitle:"Demande de projet",nameLabel:"Nom ou entreprise",emailLabel:"Adresse e-mail",serviceLabel:"Service souhaité",servicePlaceholder:"Choisir un service",other:"Autre service",budgetLabel:"Budget estimé",flexible:"Flexible / besoin de conseils",dzdBudget:"Budget en dinars algériens",deadlineLabel:"Date de livraison souhaitée",detailsLabel:"Détails du projet",paymentLabel:"Mode de paiement préféré",paymentBank:"Virement ou moyen légalement disponible",paymentDiscuss:"Discuter des options",consent:"J'accepte d'être contacté au sujet de cette demande.",submit:"Créer le récapitulatif",
+faqEyebrow:"Questions fréquentes",faqTitle:"Avant de commencer.",faq1q:"Le prix est-il définitif à l'envoi ?",faq1a:"Non. Le prix et le délai sont fixés après examen et accord écrit.",faq2q:"Un site en trois langues est-il possible ?",faq2a:"Oui. Le volume de contenu et la traduction peuvent influencer le coût.",faq3q:"Le paiement en ligne est-il activé ?",faq3a:"Non. Il faut un prestataire de paiement et une configuration sécurisée et conforme.",faq4q:"La demande est-elle enregistrée automatiquement ?",faq4a:"Non. Cette version crée un récapitulatif local. Un serveur et une base de données sont nécessaires.",footer:"Des solutions digitales conçues avec soin.",success:"Votre récapitulatif est prêt. Téléchargez-le ou ouvrez un e-mail pour l'envoyer.",download:"Télécharger le récapitulatif",send:"Envoyer par e-mail",subject:"Nouvelle demande — White Swan Technology",serviceNames:{website:"Site web",app:"Application ou système",logo:"Logo et identité visuelle",other:"Autre service"},paymentNames:{bank:"Virement ou moyen légalement disponible",discuss:"Discuter des options"}
+},
+en: {
+nav1:"Services",nav2:"Our process",nav3:"Your project",nav4:"FAQ",eyebrow:"Independent digital studio",
+heroTitle:"Your idea deserves<br><em>a remarkable digital</em> presence.",heroText:"We create websites, apps and visual identities that help your business show up with confidence.",
+heroButton:"Start a project ↗",heroExplore:"Explore services",strip:"Thoughtful design ✦ Clear communication ✦ Digital solutions ✦ Attention to detail",
+serviceEyebrow:"Our services",serviceTitle:"Digital solutions, <em>designed around you.</em>",serviceIntro:"Choose a service for your idea. We review your needs before confirming the price.",
+webTitle:"Websites",webText:"Business websites, service pages and responsive landing pages.",webPrice:"Starting at €120 — indicative",
+appTitle:"Apps and systems",appText:"App interfaces, dashboards and request systems scoped to your project.",appPrice:"Starting at €350 — indicative",
+logoTitle:"Logo and visual identity",logoText:"An elegant logo and consistent visual identity for your brand.",logoPrice:"Starting at €60 — indicative",
+choose:"Choose this service ↗",disclaimer:"Prices are indicative. Final pricing follows a review and written agreement.",
+processEyebrow:"Our process",processTitle:"From idea to <em>launch.</em>",step1:"Send a request",step1p:"Describe your idea and requirements.",step2:"Review and quote",step2p:"We review the details and suggest a quote.",step3:"Build",step3p:"Work begins after an agreement.",step4:"Delivery",step4p:"The project is delivered as agreed in writing.",
+orderEyebrow:"Let's talk about your idea",orderTitle:"Your next project starts <em>here.</em>",orderText:"Fill out the form to create a summary you can download or send manually by email.",tagline:"Digital solutions, made with care.",formTitle:"Project request",nameLabel:"Name or company",emailLabel:"Email address",serviceLabel:"Requested service",servicePlaceholder:"Choose a service",other:"Other service",budgetLabel:"Estimated budget",flexible:"Flexible / need guidance",dzdBudget:"Budget in Algerian dinars",deadlineLabel:"Preferred delivery date",detailsLabel:"Project details",paymentLabel:"Preferred payment method",paymentBank:"Bank transfer or legally available method",paymentDiscuss:"Discuss options",consent:"I agree to be contacted about this request.",submit:"Create request summary",
+faqEyebrow:"Frequently asked questions",faqTitle:"Before we begin.",faq1q:"Is the price final when I submit?",faq1a:"No. Price and timing are set after review and written agreement.",faq2q:"Can you create a three-language website?",faq2a:"Yes. Content volume and translation may affect cost.",faq3q:"Is online payment enabled?",faq3a:"No. A suitable payment provider and secure compliant setup are required.",faq4q:"Is my request saved automatically?",faq4a:"No. This version creates a local summary. A server and database are needed.",footer:"Digital solutions, made with care.",success:"Your request summary is ready. Download it or open an email to send it.",download:"Download summary",send:"Send by email",subject:"New project request — White Swan Technology",serviceNames:{website:"Website",app:"App or system",logo:"Logo and visual identity",other:"Other service"},paymentNames:{bank:"Bank transfer or legally available method",discuss:"Discuss options"}
+}
+};
+
+let lang = "ar";
+const form = document.getElementById("orderForm");
+const result = document.getElementById("result");
+
+function changeLanguage(next) {
+  lang = translations[next] ? next : "ar";
+  const t = translations[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  document.querySelectorAll("[data-t]").forEach(el => {
+    const key = el.dataset.t;
+    if (t[key] !== undefined) el.innerHTML = t[key];
+  });
+  document.querySelectorAll(".choose").forEach(button => {
+    button.onclick = () => {
+      document.getElementById("service").value = button.dataset.service;
+      document.getElementById("order").scrollIntoView({behavior:"smooth"});
+    };
+  });
+}
+document.getElementById("language").addEventListener("change", e => changeLanguage(e.target.value));
+document.getElementById("year").textContent = new Date().getFullYear();
+document.getElementById("deadline").min = new Date().toISOString().slice(0,10);
+
+form.addEventListener("submit", e => {
+  e.preventDefault();
+  if (!form.reportValidity()) return;
+  const t = translations[lang];
+  const data = new FormData(form);
+  const service = t.serviceNames[data.get("service")] || data.get("service");
+  const payment = t.paymentNames[data.get("payment")] || data.get("payment");
+  const summary = [
+    "WHITE SWAN TECHNOLOGY — PROJECT REQUEST",
+    "---------------------------------------",
+    `${t.nameLabel}: ${data.get("name")}`,
+    `${t.emailLabel}: ${data.get("email")}`,
+    `${t.serviceLabel}: ${service}`,
+    `${t.budgetLabel}: ${data.get("budget") || t.flexible}`,
+    `${t.deadlineLabel}: ${data.get("deadline") || "-"}`,
+    `${t.paymentLabel}: ${payment}`,
+    `${t.detailsLabel}:`,
+    data.get("details"),
+    "",
+    "Request only — not an accepted order or confirmed quote."
+  ].join("\n");
+
+  result.style.display = "block";
+  result.textContent = t.success + " ";
+
+  const download = document.createElement("button");
+  download.className = "button";
+  download.type = "button";
+  download.textContent = t.download;
+  download.onclick = () => {
+    const blob = new Blob([summary], {type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "white-swan-request.txt";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const emailLink = document.createElement("a");
+  emailLink.className = "button gold";
+  emailLink.textContent = t.send;
+  emailLink.href = "mailto:?subject=" + encodeURIComponent(t.subject) +
+    "&body=" + encodeURIComponent(summary);
+
+  result.appendChild(document.createElement("br"));
+  result.appendChild(download);
+  result.appendChild(emailLink);
+});
+changeLanguage("ar");
+</script>
+</body>
+</html>
